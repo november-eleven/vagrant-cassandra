@@ -1,0 +1,29 @@
+#!/bin/bash
+
+echo 'deb http://httpredir.debian.org/debian jessie-backports main' > /etc/apt/sources.list.d/backports.list
+echo 'deb http://www.apache.org/dist/cassandra/debian 37x main' > /etc/apt/sources.list.d/cassandra.list
+
+apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys 514A2AD631A57A16DD0047EC749D6EEC0353B12C
+
+apt-get update
+apt-get upgrade -y
+apt-get install -t jessie-backports -y openjdk-8-jre-headless
+apt-get install -y cassandra
+
+sleep 10
+systemctl stop cassandra
+
+sleep 10
+rm -rf /var/lib/cassandra/*
+
+IP=`/sbin/ifconfig eth1 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+sed -i -e "s/^\s*cluster_name:.*$/cluster_name: 'Vagrant'/" /etc/cassandra/cassandra.yaml
+sed -i -e "s/ seeds:.*$/ seeds: '10.11.66.100,10.11.66.101,10.11.66.102'/" /etc/cassandra/cassandra.yaml
+sed -i -e "s/^rpc_address:.*$/rpc_address: 0.0.0.0/" /etc/cassandra/cassandra.yaml
+sed -i -e "s/^.*broadcast_address:.*$/broadcast_address: /" /etc/cassandra/cassandra.yaml
+sed -i -e "s/^.*broadcast_rpc_address:.*$/broadcast_rpc_address: ${IP}/" /etc/cassandra/cassandra.yaml
+sed -i -e "s/^listen_address:.*$/listen_address: ${IP}/" /etc/cassandra/cassandra.yaml
+
+systemctl start cassandra
+
+echo "[Vagrant] Provisioning completed."
